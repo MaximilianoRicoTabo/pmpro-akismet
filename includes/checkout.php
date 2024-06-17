@@ -78,19 +78,20 @@ add_filter( 'pmpro_registration_checks', 'pmpro_akismet_registration_checks', 10
  * 
  */
 function pmpro_akismet_show_privacy_notice() {
-    // Bail if Akismet show comment setting is set to 'hide'
-    if ( 'display' !== apply_filters( 'pmpro_akismet_checkout_privacy_notice' , get_option( 'akismet_comment_form_privacy_notice', 'hide' ) ) ) {
+	// Bail if Akismet show comment setting is set to 'hide'
+	if ( 'display' !== apply_filters( 'pmpro_akismet_checkout_privacy_notice' , get_option( 'akismet_comment_form_privacy_notice', 'hide' ) ) ) {
 		return;
 	}
 
-    // Show a message that Akismet helps process checkout for spam.
-    ?>
-    <p class="pmpro_akismet_privacy_notice">
-        <?php esc_html_e( 'This site uses Akismet to reduce spam.', 'pmpro-akismet' ); ?>
-        <a href="<?php echo esc_url( 'https://akismet.com/privacy/' ); ?>" target="_blank" rel="nofollow noopener">
-            <?php esc_html_e( 'Learn how your data is processed', 'pmpro-akismet' ); ?>
-        </a>.
-    </p>
-    <?php
-}
+	// Show a message that Akismet helps process checkout for spam.
+	?>
+	<p class="pmpro_akismet_privacy_notice">
+		<?php esc_html_e( 'This site uses Akismet to reduce spam.', 'pmpro-akismet' ); ?>
+		&nbsp;
+		<a href="<?php echo esc_url( 'https://akismet.com/privacy/' ); ?>" target="_blank" rel="nofollow noopener">
+			<?php esc_html_e( 'Learn how your data is processed', 'pmpro-akismet' ); ?>
+		</a>.
+	</p>
+	<?php
+}	
 add_action( 'pmpro_checkout_before_submit_button', 'pmpro_akismet_show_privacy_notice' );
