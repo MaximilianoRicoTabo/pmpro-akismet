@@ -11,6 +11,7 @@ use PMPro_Akismet\Akismet;
  * @since 1.0
  */
 function pmpro_akismet_registration_checks( $continue ) {
+    global $pmpro_akismet_extra_nonce;
 
     // Bail if another check already failed.
     if ( ! $continue ) {
@@ -60,6 +61,14 @@ function pmpro_akismet_registration_checks( $continue ) {
         $threshold = 2;
     }
 
+    // If an extra nonce was passed in, raise the threshold.
+    if ( ! empty( $_REQUEST['pmpro_akismet_extra_nonce'] ) && wp_verify_nonce( sanitize_text_field( $_REQUEST['pmpro_akismet_extra_nonce'] ), 'pmpro_akismet_extra_nonce' ) ) {
+        $threshold = 2;
+
+        // Update nonce in case they need to submit again.
+        $pmpro_akismet_extra_nonce = wp_create_nonce( 'pmpro_akismet_extra_nonce' );
+    }
+
     /**
      * Allow for filtering of the threshold. By default the threshold is 2 (blatant spam only) for paid levels and 1 (likely spam) for free levels.
      * @since [TBD]
@@ -80,11 +89,12 @@ function pmpro_akismet_registration_checks( $continue ) {
         }
         
         // Stop checkout if above the threshold.
-        if ( (int)$is_spam >= (int)$threshold ) {
+        if ( (int)$is_spam >= (int)$threshold ) {    
             $continue = false;
-            pmpro_setMessage( esc_html__( 'Sorry, your username or email has been flagged as suspicious.', 'pmpro-akismet' ), 'pmpro_error' );
-        } else {
-            $continue = true;
+            pmpro_setMessage( esc_html__( 'Your username or email has been flagged as suspicious. Double check all fields below and submit again.', 'pmpro-akismet' ), 'pmpro_error' );
+
+            // Set this global to enable the extra check.
+            $pmpro_akismet_extra_nonce = wp_create_nonce( 'pmpro_akismet_extra_nonce' );
         }
     }
 
@@ -93,12 +103,28 @@ function pmpro_akismet_registration_checks( $continue ) {
 add_filter( 'pmpro_registration_checks', 'pmpro_akismet_registration_checks', 10, 1 );
 
 /**
+ * Add an the extra hidden nonce to the checkout form if needed.
+ */
+function pmpro_akismet_add_extra_nonce() {
+    global $pmpro_akismet_extra_nonce;
+
+    if ( ! empty( $pmpro_akismet_extra_nonce ) ) {
+        ?>
+        <input type="hidden" name="pmpro_akismet_extra_nonce" value="<?php echo esc_attr( $pmpro_akismet_extra_nonce ); ?>" />
+        <?php
+    }
+}
+add_action( 'pmpro_checkout_before_submit_button', 'pmpro_akismet_add_extra_nonce' );
+
+/**
  * Show Akismet notice on checkout page below the submit button based on Akismet privacy notice setting.
  * 
  * @since 1.0
  * 
  */
 function pmpro_akismet_show_privacy_notice() {
+    global $pmpro_akismet_extra_nonce;
+    
     // Bail if Akismet show comment setting is set to 'hide'
     if ( 'display' !== apply_filters( 'pmpro_akismet_checkout_privacy_notice' , get_option( 'akismet_comment_form_privacy_notice', 'hide' ) ) ) {
 		return;
