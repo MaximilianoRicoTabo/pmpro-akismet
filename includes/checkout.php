@@ -52,22 +52,43 @@ function pmpro_akismet_registration_checks( $continue ) {
     // Check to see if Akismet thinks it's spam or not.
     $is_spam = apply_filters( 'pmpro_akismet_checkout_is_spam', Akismet::is_spam( $data_to_check ) );
 
+    // We are stricter with free levels. (Lower is stricter.)
+    $level = pmpro_getLevelAtCheckout();
+    if ( pmpro_isLevelFree( $level ) ) {
+        $threshold = 1;
+    } else {
+        $threshold = 2;
+    }
+
+    /**
+     * Allow for filtering of the threshold. By default the threshold is 2 (blatant spam only) for paid levels and 1 (likely spam) for free levels.
+     * @since [TBD]
+     * @param int $threshold The threshold to determine if the user is spam or not.
+     * @param array $data_to_check The data to check against Akismet.
+     * @param int $level The level the user is signing up for.
+     * @param int $is_spam The spam level returned by Akismet.
+     * @return int The threshold to determine if the user is spam or not.
+     */
+    $threshold = apply_filters( 'pmpro_akismet_threshold', $threshold, $data_to_check, $level, $is_spam );
+
     if ( ! $is_spam ) {
         $continue = true;
     } else {
-        $continue = false;
-        
-        // Set error that user is spam.
-        pmpro_setMessage( esc_html__( 'Sorry, your username or email has been flagged as suspicious.', 'pmpro-akismet' ), 'pmpro_error' );
-
-        // Track as spam for the PMPro spam protection feature.
+        // Always track as spam for the PMPro spam protection feature.
         if ( function_exists( 'pmpro_track_spam_activity' ) ) {
             pmpro_track_spam_activity();
+        }
+        
+        // Stop checkout if above the threshold.
+        if ( (int)$is_spam >= (int)$threshold ) {
+            $continue = false;
+            pmpro_setMessage( esc_html__( 'Sorry, your username or email has been flagged as suspicious.', 'pmpro-akismet' ), 'pmpro_error' );
+        } else {
+            $continue = true;
         }
     }
 
     return $continue;
-
 }
 add_filter( 'pmpro_registration_checks', 'pmpro_akismet_registration_checks', 10, 1 );
 
