@@ -36,6 +36,7 @@ class Akismet {
      * Check if the checkout information provided is spam or not.
      * 
      * @since 1.0
+     * @since [TBD] Returning 2 for blatant spam and 1 for likely spam.
      * 
      * @param $data_to_check array The checkout data to check during registration.
      * @return bool True if the checkout information is spam, false otherwise.
@@ -47,8 +48,26 @@ class Akismet {
         }
 
         $response = AkismetPlugin::http_post( build_query( $data_to_check ), 'comment-check' );
-		return ! empty( $response ) && isset( $response[1] ) && 'true' === trim( $response[1] );
+
+        // If the response is empty, we can't determine if it's spam or not.
+        if ( empty( $response ) ) {
+            return false;
+        }
+
+        // If the X-akismet-pro-tip is set to 'discard' return 2 as blatant spam.
+        if ( ! empty( $response[0] ) ) {
+            $headers = $response[0]->getAll();
+            if (isset($headers['x-akismet-pro-tip']) && $headers['x-akismet-pro-tip'] === 'discard') {
+                return 2;
+            }
+        }
+        
+        // If the response is true, return 1 as likely spam.
+        if ( ! empty( $response[1] ) && $response[1] == 'true' ) {
+            return 1;
+        }
+
+        // Must not be spam.
+        return false;
     }
-
-
 }
